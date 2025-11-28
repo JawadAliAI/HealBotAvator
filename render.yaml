@@ -1,0 +1,29 @@
+services:
+  # Backend Service
+  - type: web
+    name: healbotavator-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd apps/backend && npm install
+    startCommand: cd apps/backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /voices
+
+  # Frontend Static Site
+  - type: web
+    name: healbotavator-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    buildCommand: cd apps/frontend && npm install && npm run build
+    staticPublishPath: apps/frontend/dist
+    envVars:
+      - key: VITE_BACKEND_URL
+        value: https://healbotavator-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
