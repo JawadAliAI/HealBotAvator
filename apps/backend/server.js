@@ -150,6 +150,7 @@ app.post("/sts", async (req, res) => {
   }
 });
 
+const port = process.env.PORT || 3000; 
 app.listen(port, () => {
   console.log(`Jack is listening on port ${port}`);
 });
