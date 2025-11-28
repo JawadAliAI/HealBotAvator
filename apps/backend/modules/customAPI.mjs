@@ -7,36 +7,51 @@ dotenv.config();
 const API_BASE_URL = "https://finalchatdoc.onrender.com";
 
 const customAPI = {
-    chat: async (message, userId) => {
-        try {
-            const effectiveUserId = userId || "demo_user_123";
-            console.log(`Sending Chat request to ${API_BASE_URL}/chat for user: ${effectiveUserId}`);
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    message: message,
-                    user_id: effectiveUserId,
-                    language: "en"
-                }),
-            });
+    chat: async (message, userId, retries = 2) => {
+        const effectiveUserId = userId || "demo_user_123";
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Chat API error: ${response.status} ${response.statusText} - ${errorText}`);
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                console.log(`Sending Chat request to ${API_BASE_URL}/chat for user: ${effectiveUserId} (attempt ${attempt + 1}/${retries + 1})`);
+
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                const response = await fetch(`${API_BASE_URL}/chat`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: effectiveUserId,
+                        language: "en"
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Chat API error: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                const botResponse = data.reply || data.response || data.message || "I didn't get a reply.";
+                return botResponse;
+
+            } catch (error) {
+                console.error(`Chat API Error (attempt ${attempt + 1}):`, error.message);
+
+                // If this was the last attempt, return error message
+                if (attempt === retries) {
+                    return "I'm having trouble connecting to the doctor right now. The server might be waking up - please try again in a moment.";
+                }
+
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             }
-
-            const data = await response.json();
-
-            // The API returns the message in the 'reply' field
-            const botResponse = data.reply || data.response || data.message || "I didn't get a reply.";
-
-            return botResponse;
-        } catch (error) {
-            console.error("Chat API Error:", error);
-            return "I'm having trouble connecting to the doctor right now. Please try again later.";
         }
     },
 

@@ -84,18 +84,34 @@ export const SpeechProvider = ({ children }) => {
     const effectiveUserId = userId || userIdRef.current || "demo_user_123";
     setLoading(true);
     try {
+      // Create abort controller with 60 second timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
       const data = await fetch(`${backendUrl}/tts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ message, userId: effectiveUserId }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeout);
+
+      if (!data.ok) {
+        throw new Error(`Server responded with ${data.status}: ${data.statusText}`);
+      }
+
       const response = (await data.json()).messages;
       setMessages((messages) => [...messages, ...response]);
     } catch (error) {
       console.error("TTS error:", error);
-      alert("Failed to get response. Please try again.");
+      if (error.name === 'AbortError') {
+        alert("Request timed out. The server might be slow or sleeping. Please try again.");
+      } else {
+        alert("Failed to get response. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

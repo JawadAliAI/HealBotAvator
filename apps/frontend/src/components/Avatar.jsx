@@ -46,6 +46,15 @@ export function Avatar(props) {
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
 
+    // Validate audio data
+    if (!message.audio || message.audio.length === 0) {
+      console.error("❌ No audio data in message!");
+      onMessagePlayed();
+      return;
+    }
+
+    console.log(`📦 Audio data length: ${message.audio.length} characters`);
+
     // Create and play audio
     const audioElement = new Audio("data:audio/mp3;base64," + message.audio);
 
@@ -71,12 +80,14 @@ export function Avatar(props) {
     };
 
     audioElement.onerror = (e) => {
-      console.error("❌ Audio error:", e);
+      console.error("❌ Audio error:", e, audioElement.error);
+      onMessagePlayed();
     };
 
     // Play the audio
     audioElement.play().catch(err => {
       console.error("❌ Failed to play audio:", err);
+      onMessagePlayed();
     });
 
     setAudio(audioElement);
